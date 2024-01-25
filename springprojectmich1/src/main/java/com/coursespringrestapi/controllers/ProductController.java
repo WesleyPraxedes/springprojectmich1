@@ -20,6 +20,9 @@ import com.coursespringrestapi.dtos.ProductRecordDto;
 import com.coursespringrestapi.models.ProductModel;
 import com.coursespringrestapi.repositories.ProductRepository;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 import jakarta.validation.Valid;
 
 @RestController
@@ -36,11 +39,19 @@ public class ProductController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(productRepository.save(productModel));
 	}
 	
-	
-	
 	//List
 	@GetMapping("/products")
 	public ResponseEntity<List<ProductModel>> getAllProducts(){
+		
+		//Implementation HATEOS - Go to one product
+		List<ProductModel> productsList = productRepository.findAll();
+		if(!productsList.isEmpty()) {
+			for(ProductModel product : productsList) {
+				UUID id = product.getIdProduct();
+				product.add(linkTo(methodOn(ProductController.class).getOneProduct(id)).withSelfRel());
+			}
+		}
+		
 		return ResponseEntity.status(HttpStatus.OK).body(productRepository.findAll());
 	}
 	
@@ -51,13 +62,17 @@ public class ProductController {
 		if(productO.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found.");
 		}
+		
+		//Implementation HATEOS - Go to all products
+		productO.get().add(linkTo(methodOn(ProductController.class).getAllProducts()).withRel("Products List"));
+
 		return ResponseEntity.status(HttpStatus.OK).body(productO.get());
 	}
 	
 	//Update
 	@PutMapping("/products/{id}")
 	public ResponseEntity<Object> updateProduct(@PathVariable(value="id") UUID id,
-													  @RequestBody @Valid ProductRecordDto productRecordDto) {
+				@RequestBody @Valid ProductRecordDto productRecordDto) {
 		Optional<ProductModel> productO = productRepository.findById(id);
 		if(productO.isEmpty()) {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Product not found.");
